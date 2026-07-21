@@ -238,6 +238,61 @@
   }
   .roadmap-note b{color:var(--ink);}
 
+  /* ---------- Predictor ---------- */
+  .predictor{
+    border:1px solid var(--line);border-radius:12px;
+    padding:18px;margin-bottom:20px;
+  }
+  .predictor .label{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:var(--stone);margin-bottom:10px;}
+  .predictor-row{display:flex;gap:8px;}
+  .predictor-row input[type=date]{
+    flex:1;border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);
+    background:var(--paper);
+  }
+  .predict-btn{
+    background:var(--moss-dark);color:var(--fog);border:none;
+    border-radius:8px;padding:10px 16px;font-family:'Space Grotesk',sans-serif;
+    font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;
+    transition:opacity .15s ease;
+  }
+  .predict-btn:hover{opacity:0.85;}
+  .predict-btn:disabled{opacity:0.5;cursor:wait;}
+
+  .predict-result{margin-top:16px;display:none;}
+  .predict-result.show{display:block;}
+  .crowd-meter{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:14px;
+  }
+  .crowd-score{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:36px;letter-spacing:-0.02em;}
+  .crowd-score.low{color:var(--moss);}
+  .crowd-score.mid{color:var(--blaze);}
+  .crowd-score.high{color:var(--clay);}
+  .crowd-label{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--stone);}
+  .meter-bar{
+    height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:16px;
+  }
+  .meter-fill{height:100%;border-radius:3px;transition:width .3s ease;}
+  .predict-stats{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .predict-stat-line{
+    display:flex;justify-content:space-between;
+    font-size:13px;padding:8px 0;border-bottom:1px dashed var(--line);
+  }
+  .predict-stat-line:last-child{border-bottom:none;}
+  .predict-stat-line span:first-child{color:var(--stone);}
+  .predict-stat-line span:last-child{font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--ink);}
+  .factor-breakdown{
+    margin-top:14px;padding-top:14px;border-top:1px solid var(--line);
+  }
+  .factor-breakdown .label{margin-bottom:8px;}
+  .factor-line{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--stone);}
+  .factor-line .fname{width:90px;flex-shrink:0;font-family:'JetBrains Mono',monospace;}
+  .factor-track{flex:1;height:4px;background:var(--line);border-radius:2px;overflow:hidden;}
+  .factor-track div{height:100%;background:var(--moss);}
+  .predict-error{
+    font-size:13px;color:var(--clay);padding:10px 0;
+  }
+
   footer{
     border-top:1px solid var(--line);
     padding:24px 32px;
@@ -316,27 +371,42 @@
       <div class="label">Elevation profile</div>
       <svg id="elevSvg" viewBox="0 0 300 70" preserveAspectRatio="none"></svg>
     </div>
+    <div class="predictor">
+      <div class="label">Predict congestion</div>
+      <div class="predictor-row">
+        <input type="date" id="predictDate">
+        <button class="predict-btn" id="predictBtn">Predict</button>
+      </div>
+      <div class="predict-result" id="predictResult"></div>
+    </div>
+
     <div class="roadmap-note">
-      🚧 <span><b>Crowd prediction</b> for this trail is coming in the next build — weather, holidays, sunrise, and live check-ins will feed a busy-o-meter right here.</span>
+      🚧 <span>Prediction runs on live weather + sunrise data plus a weighted heuristic. Once real crowd reports come in, this gets replaced with a trained model.</span>
     </div>
   </div>
 </div>
 
 <script>
 const trails = [
-  {name:"Eagle Bluffs via Black Mountain Trail", park:"Cypress Provincial Park", dist:"8.4 km", gain:"400 m", time:"3–3.5 hr", diff:"moderate", profile:[10,15,22,30,28,38,45,42,50,48,55]},
-  {name:"Tunnel Bluffs from Lions Bay", park:"Howe Sound", dist:"11.6 km", gain:"550 m", time:"4–4.5 hr", diff:"moderate", profile:[8,12,18,25,20,32,40,38,48,55,60]},
-  {name:"Norvan Falls", park:"Lynn Headwaters Regional Park", dist:"14.3 km", gain:"300 m", time:"4–4.5 hr", diff:"moderate", profile:[5,8,10,14,12,18,20,17,22,25,24]},
-  {name:"Bowen Lookout & St Mark's Summit", park:"Cypress Provincial Park", dist:"11.6 km", gain:"460 m", time:"4.5–5 hr", diff:"moderate", profile:[6,10,16,22,18,28,35,32,42,50,48]},
-  {name:"Joffre Lakes", park:"Joffre Lakes Provincial Park", dist:"11 km", gain:"370 m", time:"3.5–4 hr", diff:"moderate", profile:[10,14,20,18,25,22,30,28,35,32,38]},
-  {name:"Garibaldi Lake via Rubble Creek", park:"Garibaldi Provincial Park", dist:"18 km", gain:"823 m", time:"6–7 hr", diff:"hard", profile:[5,15,25,35,45,55,50,60,65,70,68]},
-  {name:"Stawamus Chief — Peak 1", park:"Stawamus Chief Provincial Park", dist:"11 km", gain:"620 m", time:"4–5 hr", diff:"hard", profile:[8,20,32,28,45,40,55,50,62,58,65]},
-  {name:"Quarry Rock", park:"Deep Cove", dist:"3.8 km", gain:"100 m", time:"1–1.5 hr", diff:"easy", profile:[4,6,8,7,10,9,12,11,13,12,14]},
-  {name:"Lynn Canyon Loop", park:"Lynn Canyon Park", dist:"2.6 km", gain:"80 m", time:"1 hr", diff:"easy", profile:[3,5,6,5,7,6,8,7,9,8,9]},
-  {name:"Elfin Lakes", park:"Garibaldi Provincial Park", dist:"22 km", gain:"600 m", time:"7–8 hr", diff:"hard", profile:[6,12,20,30,25,38,45,40,50,55,52]},
-  {name:"Grouse Grind", park:"Grouse Mountain", dist:"2.9 km", gain:"853 m", time:"1.5–2.5 hr", diff:"hard", profile:[10,25,40,55,50,65,75,70,85,90,88]},
-  {name:"Lighthouse Park Loop", park:"West Vancouver", dist:"4.5 km", gain:"60 m", time:"1.5 hr", diff:"easy", profile:[3,4,5,4,6,5,7,6,8,7,8]},
+  {name:"Eagle Bluffs via Black Mountain Trail", park:"Cypress Provincial Park", dist:"8.4 km", gain:"400 m", time:"3–3.5 hr", diff:"moderate", profile:[10,15,22,30,28,38,45,42,50,48,55], lat:49.4041, lng:-123.2065, driveMin:35, rating:4.7, capacity:120},
+  {name:"Tunnel Bluffs from Lions Bay", park:"Howe Sound", dist:"11.6 km", gain:"550 m", time:"4–4.5 hr", diff:"moderate", profile:[8,12,18,25,20,32,40,38,48,55,60], lat:49.4571, lng:-123.2445, driveMin:45, rating:4.7, capacity:40},
+  {name:"Norvan Falls", park:"Lynn Headwaters Regional Park", dist:"14.3 km", gain:"300 m", time:"4–4.5 hr", diff:"moderate", profile:[5,8,10,14,12,18,20,17,22,25,24], lat:49.3830, lng:-123.0165, driveMin:30, rating:4.6, capacity:200},
+  {name:"Bowen Lookout & St Mark's Summit", park:"Cypress Provincial Park", dist:"11.6 km", gain:"460 m", time:"4.5–5 hr", diff:"moderate", profile:[6,10,16,22,18,28,35,32,42,50,48], lat:49.4041, lng:-123.2065, driveMin:35, rating:4.7, capacity:120},
+  {name:"Joffre Lakes", park:"Joffre Lakes Provincial Park", dist:"11 km", gain:"370 m", time:"3.5–4 hr", diff:"moderate", profile:[10,14,20,18,25,22,30,28,35,32,38], lat:50.3608, lng:-122.4831, driveMin:150, rating:4.8, capacity:60},
+  {name:"Garibaldi Lake via Rubble Creek", park:"Garibaldi Provincial Park", dist:"18 km", gain:"823 m", time:"6–7 hr", diff:"hard", profile:[5,15,25,35,45,55,50,60,65,70,68], lat:49.9130, lng:-123.0454, driveMin:90, rating:4.8, capacity:130},
+  {name:"Stawamus Chief — Peak 1", park:"Stawamus Chief Provincial Park", dist:"11 km", gain:"620 m", time:"4–5 hr", diff:"hard", profile:[8,20,32,28,45,40,55,50,62,58,65], lat:49.6847, lng:-123.1493, driveMin:60, rating:4.7, capacity:250},
+  {name:"Quarry Rock", park:"Deep Cove", dist:"3.8 km", gain:"100 m", time:"1–1.5 hr", diff:"easy", profile:[4,6,8,7,10,9,12,11,13,12,14], lat:49.3387, lng:-122.9535, driveMin:25, rating:4.6, capacity:80},
+  {name:"Lynn Canyon Loop", park:"Lynn Canyon Park", dist:"2.6 km", gain:"80 m", time:"1 hr", diff:"easy", profile:[3,5,6,5,7,6,8,7,9,8,9], lat:49.3378, lng:-123.0165, driveMin:20, rating:4.5, capacity:150},
+  {name:"Elfin Lakes", park:"Garibaldi Provincial Park", dist:"22 km", gain:"600 m", time:"7–8 hr", diff:"hard", profile:[6,12,20,30,25,38,45,40,50,55,52], lat:49.8130, lng:-123.0454, driveMin:100, rating:4.7, capacity:50},
+  {name:"Grouse Grind", park:"Grouse Mountain", dist:"2.9 km", gain:"853 m", time:"1.5–2.5 hr", diff:"hard", profile:[10,25,40,55,50,65,75,70,85,90,88], lat:49.3720, lng:-123.0982, driveMin:25, rating:4.3, capacity:300},
+  {name:"Lighthouse Park Loop", park:"West Vancouver", dist:"4.5 km", gain:"60 m", time:"1.5 hr", diff:"easy", profile:[3,4,5,4,6,5,7,6,8,7,8], lat:49.3333, lng:-123.2500, driveMin:25, rating:4.7, capacity:100},
 ];
+
+// BC statutory holidays, 2026
+const BC_HOLIDAYS_2026 = new Set([
+  "2026-01-01","2026-02-16","2026-04-03","2026-05-18","2026-07-01",
+  "2026-08-03","2026-09-07","2026-09-30","2026-10-12","2026-11-11","2026-12-25"
+]);
 
 const grid = document.getElementById('grid');
 const emptyState = document.getElementById('emptyState');
@@ -409,7 +479,10 @@ const overlay = document.getElementById('overlay');
 const panel = document.getElementById('panel');
 const panelClose = document.getElementById('panelClose');
 
+let currentTrail = null;
+
 function openPanel(t){
+  currentTrail = t;
   document.getElementById('panelBadge').textContent = t.diff;
   document.getElementById('panelBadge').className = 'badge ' + t.diff;
   document.getElementById('panelName').textContent = t.name;
@@ -423,6 +496,15 @@ function openPanel(t){
   const fillPath = linePath + ` L300,70 L0,70 Z`;
   svg.innerHTML = `<path class="fill" d="${fillPath}"/><path class="line" d="${linePath}"/>`;
 
+  // reset predictor
+  const dateInput = document.getElementById('predictDate');
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  dateInput.value = tomorrow.toISOString().slice(0,10);
+  dateInput.min = new Date().toISOString().slice(0,10);
+  document.getElementById('predictResult').classList.remove('show');
+  document.getElementById('predictResult').innerHTML = '';
+
   overlay.classList.add('open');
   panel.classList.add('open');
 }
@@ -433,6 +515,229 @@ function closePanel(){
 }
 overlay.addEventListener('click', closePanel);
 panelClose.addEventListener('click', closePanel);
+
+// ============ Congestion prediction engine ============
+
+// Factor weights — starting points, meant to be replaced by learned
+// weights once real crowd-report data exists.
+const WEIGHTS = {
+  dayOfWeek: 0.30,
+  weather: 0.25,
+  season: 0.15,
+  daylight: 0.10,
+  proximity: 0.10,
+  popularity: 0.10
+};
+
+function scoreDayOfWeek(dateStr){
+  const d = new Date(dateStr + 'T12:00:00');
+  const dow = d.getDay(); // 0 = Sun
+  if (BC_HOLIDAYS_2026.has(dateStr)) return 10;
+  if (dow === 0 || dow === 6) return 9;   // weekend
+  if (dow === 5) return 6;                // Friday
+  return 3;                               // weekday
+}
+
+function scoreSeason(dateStr){
+  const month = parseInt(dateStr.slice(5,7), 10);
+  // Peak hiking season in BC: Jun–Sep. Shoulder: Apr–May, Oct. Winter: Nov–Mar.
+  if (month >= 6 && month <= 9) return 10;
+  if (month === 5 || month === 10) return 6;
+  if (month === 4) return 4;
+  return 2;
+}
+
+function scoreProximity(driveMin){
+  if (driveMin <= 30) return 10;
+  if (driveMin <= 60) return 7;
+  if (driveMin <= 100) return 4;
+  return 2;
+}
+
+function scorePopularity(rating){
+  return Math.min(10, Math.max(0, (rating - 3.5) * (10 / 1.5)));
+}
+
+function scoreWeather(tempMax, precipProb, weatherCode){
+  // weatherCode: WMO code from Open-Meteo. Treat 0-3 as clear/partly cloudy.
+  let score = 5;
+  if (tempMax >= 16 && tempMax <= 26) score += 3;
+  else if (tempMax > 26) score += 1; // too hot, slightly suppresses turnout
+  else if (tempMax < 8) score -= 3;
+
+  if (precipProb >= 60) score -= 4;
+  else if (precipProb >= 30) score -= 2;
+  else score += 1;
+
+  if (weatherCode <= 1) score += 1; // clear/mostly clear
+
+  return Math.min(10, Math.max(0, score));
+}
+
+function scoreDaylight(dayLengthHours){
+  // Shorter daylight compresses hikers into a narrower window, raising
+  // congestion per hour even if total visits are similar.
+  if (dayLengthHours <= 9) return 8;
+  if (dayLengthHours <= 12) return 6;
+  return 4;
+}
+
+// Seasonal fallback averages, used when a date falls outside Open-Meteo's
+// ~16-day forecast window and we can't get a live number.
+const SEASONAL_FALLBACK = {
+  1:{temp:5,precip:55,code:3}, 2:{temp:7,precip:50,code:3}, 3:{temp:9,precip:45,code:2},
+  4:{temp:12,precip:40,code:2}, 5:{temp:16,precip:35,code:1}, 6:{temp:19,precip:30,code:1},
+  7:{temp:22,precip:15,code:0}, 8:{temp:22,precip:15,code:0}, 9:{temp:19,precip:25,code:1},
+  10:{temp:13,precip:45,code:2}, 11:{temp:8,precip:60,code:3}, 12:{temp:5,precip:60,code:3}
+};
+
+async function fetchWeather(lat, lng, dateStr){
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=temperature_2m_max,precipitation_probability_max,weathercode&timezone=America/Vancouver&start_date=${dateStr}&end_date=${dateStr}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('forecast unavailable');
+    const data = await res.json();
+    if (!data.daily || !data.daily.temperature_2m_max || data.daily.temperature_2m_max.length === 0){
+      throw new Error('date out of forecast range');
+    }
+    return {
+      temp: data.daily.temperature_2m_max[0],
+      precip: data.daily.precipitation_probability_max[0],
+      code: data.daily.weathercode[0],
+      isForecast: true
+    };
+  } catch(e){
+    const month = parseInt(dateStr.slice(5,7), 10);
+    const fallback = SEASONAL_FALLBACK[month];
+    return { temp: fallback.temp, precip: fallback.precip, code: fallback.code, isForecast: false };
+  }
+}
+
+async function fetchSunrise(lat, lng, dateStr){
+  try{
+    const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${dateStr}&formatted=0`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status !== 'OK') throw new Error('sunrise unavailable');
+    const sunrise = new Date(data.results.sunrise);
+    const sunset = new Date(data.results.sunset);
+    const dayLengthHours = (sunset - sunrise) / 3600000;
+    return { sunrise, sunset, dayLengthHours };
+  } catch(e){
+    // Rough BC fallback by month
+    const month = parseInt(dateStr.slice(5,7), 10);
+    const hours = [8.5,9.5,11,12.5,14.5,15.8,15.5,14,12,10.2,8.7,8];
+    return { sunrise: null, sunset: null, dayLengthHours: hours[month-1] };
+  }
+}
+
+async function predictCongestion(trail, dateStr){
+  const [weather, sun] = await Promise.all([
+    fetchWeather(trail.lat, trail.lng, dateStr),
+    fetchSunrise(trail.lat, trail.lng, dateStr)
+  ]);
+
+  const factors = {
+    dayOfWeek: scoreDayOfWeek(dateStr),
+    weather: scoreWeather(weather.temp, weather.precip, weather.code),
+    season: scoreSeason(dateStr),
+    daylight: scoreDaylight(sun.dayLengthHours),
+    proximity: scoreProximity(trail.driveMin),
+    popularity: scorePopularity(trail.rating)
+  };
+
+  let total = 0;
+  for (const key in WEIGHTS) total += factors[key] * WEIGHTS[key];
+  const expectedCrowd = Math.round(total * 10) / 10;
+
+  // Estimate parking fill time: busier days + smaller lots fill earlier.
+  // Baseline arrival curve peaks 9-11am; higher crowd score shifts the
+  // fill point earlier and scales how much of capacity gets used by when.
+  const fillFraction = Math.min(1, expectedCrowd / 10);
+  const baseFillHour = 13 - (fillFraction * 5.5) - (trail.capacity < 80 ? 1 : 0);
+  const fillHour = Math.max(7, baseFillHour);
+  const fillHourInt = Math.floor(fillHour);
+  const fillMin = Math.round((fillHour - fillHourInt) * 60);
+  const fillTimeStr = formatHour(fillHourInt, fillMin);
+
+  const arriveStart = fillHour - 2;
+  const arriveEnd = fillHour - 1.25;
+  const arriveStartStr = formatHour(Math.floor(arriveStart), Math.round((arriveStart % 1) * 60));
+  const arriveEndStr = formatHour(Math.floor(arriveEnd), Math.round((arriveEnd % 1) * 60));
+
+  return {
+    expectedCrowd,
+    fillTimeStr,
+    arriveStartStr,
+    arriveEndStr,
+    factors,
+    weatherIsForecast: weather.isForecast,
+    weather
+  };
+}
+
+function formatHour(h, m){
+  const period = h >= 12 ? 'PM' : 'AM';
+  let h12 = h % 12;
+  if (h12 === 0) h12 = 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+
+// Wire up the predict button
+document.getElementById('predictBtn').addEventListener('click', async () => {
+  if (!currentTrail) return;
+  const dateStr = document.getElementById('predictDate').value;
+  const resultEl = document.getElementById('predictResult');
+  const btn = document.getElementById('predictBtn');
+
+  if (!dateStr){
+    resultEl.innerHTML = '<div class="predict-error">Pick a date first.</div>';
+    resultEl.classList.add('show');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Predicting…';
+  resultEl.classList.remove('show');
+
+  try{
+    const r = await predictCongestion(currentTrail, dateStr);
+    const level = r.expectedCrowd <= 4 ? 'low' : r.expectedCrowd <= 7 ? 'mid' : 'high';
+    const meterColor = level === 'low' ? 'var(--moss)' : level === 'mid' ? 'var(--blaze)' : 'var(--clay)';
+
+    const factorRows = Object.entries(r.factors).map(([k,v]) => `
+      <div class="factor-line">
+        <span class="fname">${k}</span>
+        <div class="factor-track"><div style="width:${v*10}%"></div></div>
+        <span>${v.toFixed(1)}</span>
+      </div>
+    `).join('');
+
+    resultEl.innerHTML = `
+      <div class="crowd-meter">
+        <span class="crowd-score ${level}">${r.expectedCrowd}/10</span>
+        <span class="crowd-label">expected crowd</span>
+      </div>
+      <div class="meter-bar"><div class="meter-fill" style="width:${r.expectedCrowd*10}%;background:${meterColor}"></div></div>
+      <div class="predict-stats">
+        <div class="predict-stat-line"><span>Parking full by</span><span>${r.fillTimeStr}</span></div>
+        <div class="predict-stat-line"><span>Best arrival</span><span>${r.arriveStartStr} – ${r.arriveEndStr}</span></div>
+        <div class="predict-stat-line"><span>Forecast temp</span><span>${Math.round(r.weather.temp)}°C, ${r.weather.precip}% precip${r.weatherIsForecast ? '' : ' (seasonal avg)'}</span></div>
+      </div>
+      <div class="factor-breakdown">
+        <div class="label">Factor breakdown</div>
+        ${factorRows}
+      </div>
+    `;
+    resultEl.classList.add('show');
+  } catch(e){
+    resultEl.innerHTML = '<div class="predict-error">Couldn\'t fetch live data — try again.</div>';
+    resultEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Predict';
+  }
+});
 
 // Clock
 function updateClock(){
